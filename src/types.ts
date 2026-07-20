@@ -1,5 +1,14 @@
 export type Mode = 'animal' | 'insect';
 
+export interface CapturedImage {
+  /** Local URI, used for on-screen preview. */
+  uri: string;
+  /** Base64-encoded image data, used to send the image to a recognition API. */
+  base64: string | null;
+  /** MIME type of the image, e.g. "image/jpeg". */
+  mimeType: string;
+}
+
 export interface SpeciesFact {
   label: string;
   value: string;

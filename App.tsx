@@ -7,44 +7,47 @@ import { CaptureScreen } from './src/screens/CaptureScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
 import { useImageCapture } from './src/hooks/useImageCapture';
 import { identifySpecies } from './src/services/identify';
+import { hasGeminiApiKey } from './src/services/gemini';
 import { colors } from './src/theme';
-import type { Identification, Mode } from './src/types';
+import type { CapturedImage, Identification, Mode } from './src/types';
 
 type Status = 'idle' | 'identifying' | 'done';
+
+const IS_DEMO = !hasGeminiApiKey();
 
 export default function App() {
   const { pickFromCamera, pickFromLibrary } = useImageCapture();
 
   const [mode, setMode] = useState<Mode>('animal');
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [image, setImage] = useState<CapturedImage | null>(null);
   const [status, setStatus] = useState<Status>('idle');
   const [result, setResult] = useState<Identification | null>(null);
 
   const handlePickCamera = useCallback(async () => {
-    const uri = await pickFromCamera();
-    if (uri) {
-      setImageUri(uri);
+    const captured = await pickFromCamera();
+    if (captured) {
+      setImage(captured);
     }
   }, [pickFromCamera]);
 
   const handlePickLibrary = useCallback(async () => {
-    const uri = await pickFromLibrary();
-    if (uri) {
-      setImageUri(uri);
+    const captured = await pickFromLibrary();
+    if (captured) {
+      setImage(captured);
     }
   }, [pickFromLibrary]);
 
   const handleClearImage = useCallback(() => {
-    setImageUri(null);
+    setImage(null);
   }, []);
 
   const handleIdentify = useCallback(async () => {
-    if (!imageUri) {
+    if (!image) {
       return;
     }
     setStatus('identifying');
     try {
-      const identification = await identifySpecies(imageUri, mode);
+      const identification = await identifySpecies(image, mode);
       setResult(identification);
       setStatus('done');
     } catch (error) {
@@ -54,32 +57,33 @@ export default function App() {
         error instanceof Error ? error.message : 'Something went wrong. Please try again.'
       );
     }
-  }, [imageUri, mode]);
+  }, [image, mode]);
 
   const handleReset = useCallback(() => {
     setResult(null);
-    setImageUri(null);
+    setImage(null);
     setStatus('idle');
   }, []);
 
-  const showResult = status === 'done' && result && imageUri;
+  const showResult = status === 'done' && result && image;
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <StatusBar style="light" />
         {showResult ? (
-          <ResultScreen imageUri={imageUri} identification={result} onReset={handleReset} />
+          <ResultScreen imageUri={image.uri} identification={result} onReset={handleReset} />
         ) : (
           <CaptureScreen
             mode={mode}
             onModeChange={setMode}
-            imageUri={imageUri}
+            imageUri={image?.uri ?? null}
             onPickCamera={handlePickCamera}
             onPickLibrary={handlePickLibrary}
             onClearImage={handleClearImage}
             onIdentify={handleIdentify}
             isIdentifying={status === 'identifying'}
+            isDemo={IS_DEMO}
           />
         )}
       </SafeAreaView>

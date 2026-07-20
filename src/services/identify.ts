@@ -1,13 +1,14 @@
-import type { Identification, Mode, SpeciesMatch } from '../types';
+import type { CapturedImage, Identification, Mode, SpeciesMatch } from '../types';
 import { getSpeciesForMode } from '../data/species';
+import { googleGeminiRecognizer, hasGeminiApiKey } from './gemini';
 
 /**
- * A recognizer takes a local image URI plus the selected mode and resolves to
+ * A recognizer takes the captured image plus the selected mode and resolves to
  * an {@link Identification}. This single interface is the seam where a real
- * recognition backend (e.g. Google Cloud Vision) will plug in later — the UI
- * only ever depends on `identifySpecies`, never on how the result is produced.
+ * recognition backend plugs in — the UI only ever depends on `identifySpecies`,
+ * never on how the result is produced.
  */
-export type SpeciesRecognizer = (imageUri: string, mode: Mode) => Promise<Identification>;
+export type SpeciesRecognizer = (image: CapturedImage, mode: Mode) => Promise<Identification>;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -25,11 +26,10 @@ function hashString(input: string): number {
 
 /**
  * Mock recognizer: returns a plausible, deterministic result from the local
- * species catalog. It simulates model latency and produces a confidence score
- * plus a couple of ranked alternatives, so the UI can be built and tested
- * end-to-end before any real API is connected.
+ * species catalog. Used as a fallback when no Gemini API key is configured, so
+ * the app still works end-to-end offline.
  */
-export const mockRecognizer: SpeciesRecognizer = async (imageUri, mode) => {
+export const mockRecognizer: SpeciesRecognizer = async (image, mode) => {
   await delay(1400);
 
   const pool = getSpeciesForMode(mode);
@@ -37,7 +37,7 @@ export const mockRecognizer: SpeciesRecognizer = async (imageUri, mode) => {
     throw new Error(`No species available for mode "${mode}".`);
   }
 
-  const seed = hashString(imageUri);
+  const seed = hashString(image.uri);
   const bestIndex = seed % pool.length;
 
   const best: SpeciesMatch = {
@@ -57,20 +57,10 @@ export const mockRecognizer: SpeciesRecognizer = async (imageUri, mode) => {
 };
 
 /**
- * Placeholder for the real backend. To enable Google Cloud Vision:
- *  1. Send the image (base64 or via upload) to the Vision API `labelDetection`
- *     / `webDetection` endpoint using an API key or backend proxy.
- *  2. Map the returned labels to entries in `src/data/species.ts` (or fetch
- *     richer info from a species database keyed by the label).
- *  3. Return an `Identification` in the same shape as `mockRecognizer`.
- *
- * Keeping the same return type means only this constant needs to change to
- * switch the whole app over to real recognition.
+ * The recognizer the app uses. When a Gemini API key is configured
+ * (EXPO_PUBLIC_GEMINI_API_KEY), real recognition is used; otherwise the app
+ * falls back to the offline mock so it still runs.
  */
-// export const googleVisionRecognizer: SpeciesRecognizer = async (imageUri, mode) => { ... };
-
-/**
- * The recognizer the app uses. Swap `mockRecognizer` for `googleVisionRecognizer`
- * (or any other implementation) to go live — nothing else in the UI changes.
- */
-export const identifySpecies: SpeciesRecognizer = mockRecognizer;
+export const identifySpecies: SpeciesRecognizer = hasGeminiApiKey()
+  ? googleGeminiRecognizer
+  : mockRecognizer;

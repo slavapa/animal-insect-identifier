@@ -15,6 +15,7 @@ interface CaptureScreenProps {
   onClearImage: () => void;
   onIdentify: () => void;
   isIdentifying: boolean;
+  isDemo: boolean;
 }
 
 export function CaptureScreen({
@@ -26,6 +27,7 @@ export function CaptureScreen({
   onClearImage,
   onIdentify,
   isIdentifying,
+  isDemo,
 }: CaptureScreenProps) {
   const theme = modeThemes[mode];
 
@@ -107,8 +109,9 @@ export function CaptureScreen({
       />
 
       <Text style={styles.disclaimer}>
-        Demo mode: results are sample data. Connect a recognition API (e.g. Google
-        Cloud Vision) to identify real photos.
+        {isDemo
+          ? 'Demo mode: results are sample data. Add a Gemini API key to identify real photos.'
+          : 'Powered by Google Gemini. AI can make mistakes — verify important results.'}
       </Text>
     </ScrollView>
   );

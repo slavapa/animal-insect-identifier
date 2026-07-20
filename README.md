@@ -38,29 +38,42 @@ src/
   types.ts                  Shared types (Mode, SpeciesInfo, Identification)
   theme.ts                  Colors, spacing, per-mode accent themes
   data/species.ts           Offline species catalog used by the mock recognizer
-  services/identify.ts      Recognizer seam (mock now; Vision-ready)
-  hooks/useImageCapture.ts  Camera / gallery pickers + permissions
+  services/identify.ts      Recognizer seam; picks Gemini or the mock
+  services/gemini.ts        Google Gemini recognizer (multimodal + JSON schema)
+  hooks/useImageCapture.ts  Camera / gallery pickers + permissions (returns base64)
   components/               ModeToggle, AppButton, ConfidenceBar
   screens/                  CaptureScreen, ResultScreen
 ```
 
-## Connecting a real recognition API (Google Cloud Vision)
+## Recognition (Google Gemini)
 
-All recognition goes through `identifySpecies` in `src/services/identify.ts`.
-To go live:
+Real identification is powered by the **Google Gemini API**. The image is sent
+(as base64) with a mode-specific prompt, and Gemini returns structured JSON that
+is mapped onto the app's `Identification` type in `src/services/gemini.ts`.
 
-1. Implement a `SpeciesRecognizer` that sends the image to Google Cloud Vision
-   (`labelDetection` / `webDetection`) via a backend proxy or API key.
-2. Map the returned labels to entries in `src/data/species.ts`, or fetch richer
-   details from a species database keyed by the label.
-3. Return an `Identification` (same shape as the mock).
-4. Swap the export at the bottom of the file:
+`identifySpecies` in `src/services/identify.ts` automatically uses Gemini when an
+API key is configured, and falls back to the offline mock catalog otherwise — so
+the app always runs, even with no key.
 
-   ```ts
-   export const identifySpecies: SpeciesRecognizer = googleVisionRecognizer;
+### Setup
+
+1. Get a Gemini API key from https://aistudio.google.com/apikey.
+2. Copy `.env.example` to `.env` and set your key:
+
+   ```sh
+   EXPO_PUBLIC_GEMINI_API_KEY=your-gemini-api-key-here
    ```
 
-Nothing in the UI needs to change.
+3. Restart the dev server (env vars are read at start): `npm start -- --clear`.
 
-> Tip: don't ship a Vision API key inside the app. Call Vision from a small
-> backend/serverless function and have the app talk to that.
+`.env` is gitignored — never commit your key.
+
+### ⚠️ Security
+
+`EXPO_PUBLIC_*` variables are **embedded in the app bundle**, so a key shipped
+this way can be extracted from a built app. This is fine for local development
+and learning, but for a production/public app you should:
+
+- Call Gemini from a small backend/serverless proxy and have the app talk to that, and/or
+- Restrict the key (API + application restrictions) in Google Cloud, and rotate
+  any key that has been exposed.
