@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "animal-insect-identifier",
+    "name": "Species Identifier",
     "slug": "animal-insect-identifier",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,6 +20,17 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Species Identifier accesses your photos so you can identify animals and insects in them.",
+          "cameraPermission": "Species Identifier uses your camera so you can photograph an animal or insect to identify it.",
+          "microphonePermission": false
+        }
+      ]
+    ]
   }
 }
